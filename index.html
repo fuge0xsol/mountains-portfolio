@@ -58,7 +58,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0a1320;
 
 <div id="titlecard">
   <h1>山河集 · 中国三山作品集</h1>
-  <div class="sub">通城锡山 · 杭州北高峰 · 南京紫金山 ｜ 真实DEM × 卫星影像 × OSM</div>
+  <div class="sub">通城锡山 · 杭州北高峰 · 南京紫金山 ｜ 真实DEM × 卫星影像 × OSM ｜ <span style="color:#ffd688">v3.2 边界对齐版</span></div>
 </div>
 
 <div id="ctrl">
@@ -1428,6 +1428,14 @@ rotBtn.addEventListener('click',()=>{controls.autoRotate=!controls.autoRotate;
 const qs=new URLSearchParams(location.search);
 const HIDE=qs.get('hide');
 if(HIDE){scene.traverse(o=>{if(o.name===HIDE)o.visible=false;});}
+if(qs.has('markers')){
+  [[121.0,23.7],[120.9,22.6],[109.85,19.2],[110.4,19.9]].forEach(m=>{
+    const x=mx(m[0]), z=mz(m[1]), y=groundY(x,z);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.7,70,6),
+      new THREE.MeshBasicMaterial({color:0x00ffff}));
+    pole.position.set(x,y+35,z); scene.add(pole);
+  });
+}
 const pinnedWork=qs.get('reveal')?(works.find(k=>k.data.id===qs.get('reveal'))||null):null;
 if(pinnedWork){pinnedWork.state=1;pinnedWork.group.position.y=pinnedWork.baseY;
   pinnedWork.mat.opacity=0.96;pinnedWork.slabMat.opacity=1;pinnedWork.edge.material.opacity=1;

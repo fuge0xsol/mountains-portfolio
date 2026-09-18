@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>山河集 · 中国名山作品集</title>
+<script>
+  (function(){
+    if(/pages\.dev$/.test(location.hostname)){
+      var a=document.getElementById('authorLink');
+      if(a)a.href='https://fuge0xsol.pages.dev/';
+    }
+  })();
+</script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-DP47SS0CG3"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -70,7 +78,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0a1320;
 <div id="titlecard">
   <h1>山河集 · 中国名山作品集</h1>
   <div class="sub">杭州北高峰 · 南京紫金山 ｜ 真实DEM × 卫星影像 × OSM ｜ <span style="color:#ffd688">v3.3</span></div>
-  <div class="author">made by <a href="https://fuge0xsol.github.io/" target="_blank">fuge0xsol</a> ｜ <a href="https://fuge0xsol.github.io/" target="_blank">GitHub Pages</a> · <a href="https://fuge0xsol.pages.dev/" target="_blank">Cloudflare Pages</a></div>
+  <div class="author">made by <a id="authorLink" href="https://fuge0xsol.github.io/" target="_blank">fuge0xsol</a></div>
 </div>
 
 <div id="ctrl">

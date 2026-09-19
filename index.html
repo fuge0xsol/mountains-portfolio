@@ -66,6 +66,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0a1320;
 </head>
 <body>
 <div id="gl"></div>
+<canvas id="leader" style="position:absolute;inset:0;pointer-events:none;"></canvas>
 <div id="labels"></div>
 <div id="loading">正在点亮山河 …</div>
 
@@ -1276,7 +1277,9 @@ function addTracked(html,pos,cls,onclick){
   d.className='lb '+cls; d.innerHTML=html;
   if(onclick)d.addEventListener('click',onclick);
   labelLayer.appendChild(d);
-  tracked.push({el:d,pos:new V3(pos[0],pos[1],pos[2]),pri:cls==='peak'?5:(cls==='prov'?1:0),w:0,h:0});
+  const e={el:d,pos:new V3(pos[0],pos[1],pos[2]),pri:cls==='peak'?5:(cls==='prov'?1:0),w:0,h:0};
+  tracked.push(e);
+  return e;
 }
 [['湖北',111.6,31.1],['浙江',119.5,29.0],['江苏',119.3,32.9],['西藏',88,31],['新疆',85,41.5],['青海',96,35.5],['四川',102.5,30.5],['云南',101.5,24.5],['内蒙古',114,42.5],['黑龙江',127.5,48.5],['山东',118,36.3],['河南',113.6,33.9],['山西',112.3,37.6],['陕西',108.9,34.9],['甘肃',100,38],['河北',115.5,38.5],['安徽',116.8,31.8],['江西',115.8,27.6],['福建',118.3,26.1],['贵州',106.7,26.8],['湖南',111.7,27.6],['广东',113.4,23.8],['广西',108.8,23.8],['吉林',126.2,43.4],['辽宁',122.8,41.3]].forEach(([n,lo,la])=>{
   addTracked(n,[mx(lo),groundY(mx(lo),mz(la))+2.5,mz(la)],'prov');
@@ -1306,9 +1309,9 @@ const beamTex=(function(){
 
 // ---------- works ----------
 const WORKC={
-  bgf:   {scale:42, alt:74, label:'01', lox:12},
-  zjs:   {scale:47, alt:96, label:'02', lox:13},
-  usa:   {scale:60, alt:92, label:'03', lox:0},
+  bgf:   {scale:42, alt:74, label:'01', tick:40},
+  zjs:   {scale:47, alt:96, label:'02', tick:60},
+  usa:   {scale:60, alt:92, label:'03', tick:100},
 };
 const works=[]; const worksfx=new THREE.Group(); worksfx.name='worksfx'; scene.add(worksfx);
 DATA.works.forEach((w,i)=>{
@@ -1327,8 +1330,13 @@ DATA.works.forEach((w,i)=>{
     new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
   hit.rotation.x=-Math.PI/2; hit.position.set(ax,ay+2.5,az); hit.userData.work=w;
   worksfx.add(hit);
-  addTracked('<span class="p1">'+cfg.label+' · '+w.name+'</span><span class="p2">'+w.region+' · 海拔'+w.elev+'m</span>',
-             [ax+(cfg.lox||0),ay+9,az],'peak',()=>enterWork(w));
+  if(cfg.tick){
+    const tG=new THREE.BufferGeometry().setFromPoints([new V3(ax,ay+1.8,az),new V3(ax,cfg.tick,az)]);
+    worksfx.add(new THREE.Line(tG,new THREE.LineBasicMaterial({color:0xffd688,transparent:true,opacity:0.65})));
+  }
+  const wt=addTracked('<span class="p1">'+cfg.label+' · '+w.name+'</span><span class="p2">'+w.region+' · 海拔'+w.elev+'m</span>',
+             [ax,(cfg.tick||90)+2,az],'peak',()=>enterWork(w));
+  wt.anchorV3=new V3(ax,ay+1.6,az);
   // hidden hover tile
   const dem=w.dem, GW=dem.w, GH=dem.h;
   const grid=dem.z; const zmax=Math.max(...grid), zmin=Math.min(...grid);
@@ -1416,6 +1424,7 @@ function updateLabels(){
     if(!t.w){t.w=t.el.offsetWidth||50;t.h=t.el.offsetHeight||18;}
     projV.copy(t.pos).project(camera);
     const x=projV.x*wHalf+wHalf,y=-projV.y*hHalf+hHalf;
+    t.sx=x; t.sy=y;
     if(projV.z>1||x<-200||x>innerWidth+200||y<-120||y>innerHeight+150){t.el.style.visibility='hidden';continue;}
     const pad=6;
     const cands=[[0,0],[t.w*1.2,-t.h*0.6],[-t.w*1.2,-t.h*0.6],[0,-t.h*2.2],[t.w,t.h*1.4]];
@@ -1430,7 +1439,24 @@ function updateLabels(){
     if(!at){t.el.style.visibility='hidden';continue;}
     placed.push({x1:at[0]-t.w/2-pad,x2:at[0]+t.w/2+pad,y1:at[1]-t.h-pad,y2:at[1]});
     t.el.style.visibility='visible';
+    t.lx=at[0]; t.ly=at[1];
     t.el.style.transform='translate(-50%,-100%) translate('+at[0].toFixed(1)+'px,'+at[1].toFixed(1)+'px)';
+  }
+  // 引线: 峰标签底部 → 锚点环
+  const lg=document.getElementById('leader');
+  if(lg){
+    if(lg.width!==innerWidth||lg.height!==innerHeight){lg.width=innerWidth;lg.height=innerHeight;}
+    const g2=lg.getContext('2d');
+    g2.clearRect(0,0,lg.width,lg.height);
+    g2.lineWidth=1.2; g2.strokeStyle='rgba(255,214,136,0.55)';
+    tracked.forEach(t=>{
+      if(t.cls!=='peak'||t.lx===undefined||t.el.style.visibility==='hidden')return;
+      if(!t.anchorV3)return;
+      const p=t.anchorV3.clone().project(camera);
+      if(p.z>1)return;
+      const ax2=p.x*innerWidth/2+innerWidth/2, ay2=-p.y*innerHeight/2+innerHeight/2;
+      g2.beginPath(); g2.moveTo(t.lx,t.ly); g2.lineTo(ax2,ay2-3); g2.stroke();
+    });
   }
 }
 
@@ -1514,6 +1540,7 @@ window.__ready=true;
 
 </script>
 <script>
+window.onerror=function(msg,src,line){var l=document.getElementById('loading');if(l)l.textContent='ERR '+msg+' @'+line;};
 (function(){var l=document.getElementById('loading');
  var off=function(){l.style.opacity='0';setTimeout(function(){l.remove();},700);};
  if(window.__ready)off();
